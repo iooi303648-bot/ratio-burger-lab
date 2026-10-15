@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>비례배분 버거 연구소</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
+<style>
+/* Layout: one lab notebook with three numbered stations (tabs); each station = figure/visual on one side, controls on the other, stacking on phones */
+:root{
+  --bg:#FFF9F1; --surface:#FFFFFF; --surface-2:#F8EFE3; --ink:#30241E; --ink-soft:#78665B; --line:#E7D7C5;
+  --upper:#F06E5B; --upper-soft:#FFD6CB; --legs:#4777D7; --carb:#9A5E0E; --carb-fill:#D69632;
+  --good:#2F7A3A; --good-bg:#E3F1E4; --warn:#9A4A10; --warn-bg:#FBE7D6;
+  --skin:#FFD2A5; --hair:#3C2B25; --grid:#EADFD1;
+  --display:'Jua','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  --body:'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#1A1411; --surface:#241C17; --surface-2:#2F251E; --ink:#F3E8DC; --ink-soft:#C7B6A6; --line:#45362B;
+  --upper:#E8674F; --upper-soft:#8A3A2C; --legs:#5C8FE6; --carb:#E0AE57; --carb-fill:#C4841F;
+  --good:#7CC487; --good-bg:#1F3324; --warn:#F0A56B; --warn-bg:#3A2616; --skin:#E9BC93; --hair:#20160F; --grid:#3A2E25; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#1A1411; --surface:#241C17; --surface-2:#2F251E; --ink:#F3E8DC; --ink-soft:#C7B6A6; --line:#45362B;
+  --upper:#E8674F; --upper-soft:#8A3A2C; --legs:#5C8FE6; --carb:#E0AE57; --carb-fill:#C4841F;
+  --good:#7CC487; --good-bg:#1F3324; --warn:#F0A56B; --warn-bg:#3A2616; --skin:#E9BC93; --hair:#20160F; --grid:#3A2E25; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:20px 48px}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance}
+button{font-family:inherit;font-size:inherit;color:inherit}
+button:focus-visible{outline:3px solid var(--legs);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+header.top h1{font-size:clamp(1.8rem,4vw,2.4rem);line-height:1.1}
+header.top p{margin:4px 0 0;color:var(--ink-soft)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tab{display:flex;align-items:center;gap:8px;border:2px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 16px 8px 8px;cursor:pointer;min-height:44px}
+.tab b{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--surface-2);font-family:var(--display);font-weight:400}
+.tab[aria-selected="true"]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.tab[aria-selected="true"] b{background:var(--upper);color:#fff}
+
+.station{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:20px;min-width:0;box-shadow:0 12px 34px rgba(82,53,34,.07)}
+.panel h2{font-size:1.35rem;margin-bottom:4px}
+.hint{color:var(--ink-soft);font-size:.92rem;margin:0}
+.col-fig{flex:1 1 320px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.col-ctl{flex:1.4 1 380px;display:flex;flex-direction:column;gap:16px;min-width:0}
+
+svg.fig{width:100%;max-width:300px;height:auto;touch-action:none;user-select:none}
+.legend{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;font-size:.9rem;color:var(--ink-soft)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+.counts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.count{background:var(--surface-2);border-radius:14px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.count .lbl{font-size:.88rem;color:var(--ink-soft)}
+.count .val{font-family:var(--display);font-size:1.7rem;line-height:1}
+.stepper{display:flex;gap:6px}
+.stepper button{width:44px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:1.1rem}
+.stepper button:disabled{opacity:.35;cursor:not-allowed}
+
+.ratio-card{border:2px solid var(--ink);border-radius:16px;padding:14px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
+.ratio-card .big{font-family:var(--display);font-size:2rem;line-height:1.1}
+.ratio-card .up{color:var(--upper)} .ratio-card .lg{color:var(--legs)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;cursor:pointer;min-height:40px}
+.chip:hover{border-color:var(--ink)}
+
+.calc{background:var(--surface-2);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.calc .row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.mini{display:inline-flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:3px}
+.mini button{width:36px;height:36px;border:0;background:transparent;border-radius:9px;cursor:pointer;font-size:1.05rem}
+.mini button:hover{background:var(--surface-2)}
+.mini span{min-width:28px;text-align:center;font-family:var(--display);font-size:1.3rem}
+.formula{font-size:1.05rem}
+.frac{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.1;margin:0 4px;font-variant-numeric:tabular-nums}
+.frac span:first-child{border-bottom:2px solid currentColor;padding:0 4px}
+.btn{border:0;background:var(--ink);color:var(--bg);border-radius:12px;padding:10px 18px;cursor:pointer;min-height:44px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--ink)}
+.msg{font-size:.92rem;color:var(--warn)}
+
+/* burger */
+.shelf{flex:1 1 280px;display:flex;flex-direction:column;gap:8px}
+.ing{display:flex;align-items:center;gap:10px;background:var(--surface-2);border-radius:12px;padding:6px 8px 6px 12px}
+.ing .nm{flex:1;min-width:0}
+.ing .nm b{font-weight:600;display:block;font-size:.95rem}
+.ing .nm small{color:var(--ink-soft);font-size:.78rem}
+.ing .mini span{font-family:var(--body);font-size:1rem}
+.ing.fixed{opacity:.85}
+.tag{font-size:.75rem;color:var(--ink-soft);border:1px dashed var(--line);border-radius:999px;padding:3px 10px}
+.burger-col{flex:1 1 240px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.plate{position:relative;width:100%;max-width:300px;min-height:310px;display:flex;align-items:flex-end;justify-content:center;padding:24px 10px 34px;border-radius:48% 48% 44% 44%/18% 18% 13% 13%;background:radial-gradient(ellipse at 50% 75%,#fff 0 43%,#f5e8d8 44% 68%,#ead6bf 69% 71%,transparent 72%),linear-gradient(180deg,#fffaf4,#f5eadc);box-shadow:inset 0 -12px 24px rgba(119,76,39,.08)}
+.plate:after{content:"";position:absolute;left:18%;right:18%;bottom:18px;height:14px;border-radius:50%;background:rgba(80,46,25,.12);filter:blur(7px)}
+.stack{position:relative;z-index:1;width:72%;display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 9px 7px rgba(80,45,25,.18))}
+.stack>div{position:relative;width:100%;box-shadow:inset 0 -3px 0 rgba(75,35,15,.09),inset 0 2px 0 rgba(255,255,255,.18)}
+.l-bun-top{height:52px;border-radius:52% 52% 14px 14px/100% 100% 16px 16px;background:linear-gradient(180deg,#F7C56B 0%,#EAA84A 72%,#D88E34 100%);border:1px solid #D89235}
+.l-bun-top:after{content:"·  ·   ·  ·  ·";position:absolute;inset:7px 15% auto;color:#FFF1BD;font-size:19px;letter-spacing:5px;text-shadow:15px 10px #ffe8a3,-10px 15px #fff0bd}
+.l-bun-bot{height:27px;border-radius:9px 9px 23px 23px/9px 9px 70% 70%;background:linear-gradient(#E6A14A,#C97A2D);border:1px solid #C77D2E}
+.l-beef{height:23px;margin:2px 0;border-radius:7px;background:repeating-linear-gradient(135deg,#71442E 0 9px,#633824 9px 16px);border:1px solid #56301F}
+.l-chicken{height:22px;margin:2px 0;border-radius:8px;background:repeating-linear-gradient(165deg,#E1BE78 0 11px,#D2A862 11px 16px);border:1px solid #C59A55}
+.l-hash{height:17px;margin:2px 0;border-radius:5px;background:repeating-linear-gradient(90deg,#E9AE3F 0 7px,#C98A26 7px 9px);border:1px solid #C98927}
+.l-cheese{height:12px;width:108%!important;margin:1px 0 1px -4%;background:linear-gradient(90deg,#FFD65A,#F2AC2F);clip-path:polygon(0 0,100% 0,93% 100%,55% 62%,12% 100%)}
+.l-bacon{height:12px;margin:1px 0;border-radius:6px;background:repeating-linear-gradient(105deg,#B84535 0 10px,#E27A5D 10px 15px);border:1px solid #9B352A}
+.l-onion{height:12px;margin:1px 0;border-radius:50%;background:repeating-radial-gradient(ellipse at center,#fff3d5 0 4px,#e7c779 5px 7px,#fff3d5 8px 11px);border:1px solid #D5AB54}
+.l-lettuce{height:15px;background:linear-gradient(#8FCB63,#5E9C43);clip-path:polygon(0 35%,8% 6%,17% 35%,26% 5%,36% 35%,46% 7%,56% 36%,66% 4%,76% 35%,87% 8%,100% 34%,96% 100%,4% 100%)}
+.l-tomato{height:15px;background:radial-gradient(circle at 18% 45%,#f7a088 0 3px,transparent 4px),radial-gradient(circle at 58% 45%,#f7a088 0 3px,transparent 4px),linear-gradient(#EE725C,#C94132);border-radius:7px;border:1px solid #C83E31}
+.l-pickle{height:11px;background:repeating-radial-gradient(ellipse at center,#BBD066 0 6px,#879F39 7px 9px);border-radius:50%;border:1px solid #7F9238}
+.l-mayo{height:7px;margin:2px 0;border-radius:50% 40% 55% 45%;background:#FFF6DB;border:1px solid #E8D7AE}
+.l-ketchup{height:7px;margin:2px 0;border-radius:45% 55% 40% 60%;background:linear-gradient(#E25747,#B92F27)}
+.analyzer{flex:1.3 1 340px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tile{background:var(--surface-2);border-radius:12px;padding:10px;text-align:center;border-top:4px solid var(--c)}
+.tile small{color:var(--ink-soft)}
+.tile div{font-family:var(--display);font-size:1.5rem}
+.cond{border:2px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.cond.ok{border-color:var(--good)}
+.cond-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.pill{font-size:.82rem;border-radius:999px;padding:3px 10px;font-weight:600}
+.pill.ok{background:var(--good-bg);color:var(--good)}
+.pill.no{background:var(--warn-bg);color:var(--warn)}
+.bar{display:flex;height:24px;border-radius:7px;overflow:hidden;gap:2px;background:var(--line)}
+.bar div{display:flex;align-items:center;justify-content:center;color:#fff;font-size:.75rem;font-variant-numeric:tabular-nums;min-width:0;overflow:hidden}
+.barrow{display:grid;grid-template-columns:70px minmax(0,1fr);gap:8px;align-items:center;font-size:.82rem;color:var(--ink-soft)}
+details.goal{background:var(--surface-2);border-radius:14px;padding:12px 16px}
+details.goal summary{cursor:pointer;font-weight:600}
+
+/* page 3 */
+.compare{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;align-items:flex-end}
+.compare figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:6px;flex:1 1 200px;max-width:280px}
+.compare figcaption{text-align:center;font-weight:600}
+.compare figcaption small{display:block;font-weight:400;color:var(--ink-soft)}
+.arrow{font-family:var(--display);font-size:2rem;color:var(--ink-soft);align-self:center}
+.steps{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none}
+.steps li{display:flex;gap:10px;align-items:flex-start}
+.steps li>b{flex:0 0 28px;height:28px;border-radius:50%;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:400}
+.note{font-size:.85rem;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:10px;margin:0}
+@media (prefers-reduced-motion: no-preference){ svg.fig rect, svg.fig path, svg.fig circle{transition:all .25s ease} }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>비례배분 버거 연구소</h1>
+      <p>6학년 수학 · 비례식과 비례배분</p>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="활동 단계">
+      <button class="tab" role="tab" id="tab-1" aria-controls="page-1" aria-selected="true"><b>1</b>신체 비율</button>
+      <button class="tab" role="tab" id="tab-2" aria-controls="page-2" aria-selected="false"><b>2</b>건강한 버거</button>
+      <button class="tab" role="tab" id="tab-3" aria-controls="page-3" aria-selected="false"><b>3</b>나의 변화</button>
+    </nav>
+  </header>
+
+  <!-- PAGE 1 -->
+  <section id="page-1" role="tabpanel" aria-labelledby="tab-1" class="station">
+    <div class="panel col-fig">
+      <svg class="fig" id="fig1" viewBox="0 0 300 380" role="img" aria-label="18칸 격자 위의 인물">
+        <!-- file:// 미리보기에서도 보이는 기본 그림. 앱이 실행되면 현재 비율 그림으로 교체됩니다. -->
+        <defs>
+          <pattern id="fallbackGrid" width="18" height="18" patternUnits="userSpaceOnUse">
+            <path d="M18 0H0V18" fill="none" stroke="#D7E5DF" stroke-width="1"/>
+          </pattern>
+          <linearGradient id="fallbackShirt" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#FF8A78"/><stop offset="1" stop-color="#EF6D5C"/></linearGradient>
+          <linearGradient id="fallbackPants" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#6590E7"/><stop offset="1" stop-color="#4774CE"/></linearGradient>
+          <filter id="fallbackShadow" x="-30%" y="-20%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="#51392B" flood-opacity=".16"/></filter>
+        </defs>
+        <rect x="52" y="14" width="180" height="324" fill="url(#fallbackGrid)"/>
+        <g fill="#6C8C83" font-size="10" text-anchor="end"><text x="44" y="18">0</text><text x="44" y="72">3</text><text x="44" y="126">6</text><text x="44" y="180">9</text><text x="44" y="234">12</text><text x="44" y="288">15</text><text x="44" y="342">18</text></g>
+        <ellipse cx="142" cy="340" rx="47" ry="6" fill="#3C281C" opacity=".12"/>
+        <g filter="url(#fallbackShadow)">
+          <rect x="106" y="174" width="32" height="157" rx="8" fill="url(#fallbackPants)" stroke="#315EAC" stroke-width="1.5"/>
+          <rect x="146" y="174" width="32" height="157" rx="8" fill="url(#fallbackPants)" stroke="#315EAC" stroke-width="1.5"/>
+        </g>
+        <rect x="101" y="324" width="39" height="11" rx="6" fill="#34455B"/><rect x="144" y="324" width="39" height="11" rx="6" fill="#34455B"/>
+        <rect x="84" y="95" width="15" height="68" rx="8" fill="#FFD1A1" stroke="#D99D70" stroke-width="1.2"/><rect x="185" y="95" width="15" height="68" rx="8" fill="#FFD1A1" stroke="#D99D70" stroke-width="1.2"/>
+        <path d="M112 86Q94 89 94 106V160Q94 174 109 176H175Q190 174 190 160V106Q190 89 172 86Z" fill="url(#fallbackShirt)" stroke="#C84E40" stroke-width="1.6" filter="url(#fallbackShadow)"/>
+        <path d="M131 87Q142 99 153 87" fill="none" stroke="#FFF7F0" stroke-width="3" stroke-linecap="round"/><circle cx="142" cy="137" r="3.5" fill="#FFE0B8"/>
+        <circle cx="105" cy="53" r="7" fill="#FFD1A1" stroke="#D99D70"/><circle cx="179" cy="53" r="7" fill="#FFD1A1" stroke="#D99D70"/>
+        <rect x="106" y="14" width="72" height="68" rx="29" fill="#FFD1A1" stroke="#D99D70" stroke-width="1.4" filter="url(#fallbackShadow)"/>
+        <path d="M108 45C105 25 119 11 141 11C164 11 181 25 176 44C166 37 157 35 149 36C142 27 130 26 123 36C117 36 112 39 108 45Z" fill="#3A2A25"/>
+        <path d="M157 20Q148 27 145 36" fill="none" stroke="#725044" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="127" cy="53" r="2.5" fill="#3A2A25"/><circle cx="157" cy="53" r="2.5" fill="#3A2A25"/>
+        <circle cx="117" cy="62" r="3.5" fill="#F28D86" opacity=".45"/><circle cx="167" cy="62" r="3.5" fill="#F28D86" opacity=".45"/>
+        <path d="M132 66Q142 71 152 66" fill="none" stroke="#9C4A46" stroke-width="2.3" stroke-linecap="round"/>
+        <path d="M52 86H232M52 176H232" stroke="#2F241F" stroke-width="2" stroke-dasharray="5 4"/>
+        <circle cx="232" cy="86" r="10" fill="#FFF" stroke="#2F241F" stroke-width="2.5"/><circle cx="232" cy="176" r="10" fill="#FFF" stroke="#2F241F" stroke-width="2.5"/>
+      </svg>
+      <div class="legend"><span><i style="background:var(--upper)"></i>상체 (머리+몸)</span><span><i style="background:var(--legs)"></i>다리</span></div>
+      <p class="hint">격자 오른쪽의 동그란 손잡이를 위아래로 끌어 경계를 옮겨 보세요.</p>
+    </div>
+    <div class="col-ctl">
+      <div class="panel" style="display:flex;flex-direction:column;gap:14px">
+        <div>
+          <h2>키 18칸, 어떻게 나눌까?</h2>
+          <p class="hint">머리와 몸을 합쳐 상체라고 하고, 상체와 다리 두 부분을 비교해요.</p>
+        </div>
+        <div class="counts">
+          <div class="count"><span class="lbl">머리</span><span class="val num" id="c-head">4</span>
+            <div class="stepper"><button id="head-minus" aria-label="머리 한 칸 줄이기">−</button><button id="head-plus" aria-label="머리 한 칸 늘리기">+</button></div></div>
+          <div class="count"><span class="lbl">몸</span><span class="val num" id="c-body">5</span><span class="lbl" style="font-size:.78rem">나머지 칸</span></div>
+          <div class="count"><span class="lbl">다리</span><span class="val num" id="c-legs">9</span>
+            <div class="stepper"><button id="legs-minus" aria-label="다리 한 칸 줄이기">−</button><button id="legs-plus" aria-label="다리 한 칸 늘리기">+</button></div></div>
+        </div>
+        <div class="ratio-card">
+          <span class="hint" style="flex-basis:100%">상체 : 다리</span>
+          <span class="big num"><span class="up" id="r-up">9</span> : <span class="lg" id="r-lg">9</span></span>
+          <span id="r-simple" class="num"></span>
+        </div>
+        <div>
+          <p class="hint" style="margin-bottom:6px">웹앱 예시</p>
+          <div class="chips">
+            <button class="chip" data-preset="4,5,9">큰 머리 4 : 5 : 9</button>
+            <button class="chip" data-preset="2,6,10">자연스러운 비율 2 : 6 : 10</button>
+            <button class="chip" data-preset="2,4,12">긴 다리 2 : 4 : 12</button>
+          </div>
+        </div>
+      </div>
+      <div class="calc" aria-labelledby="calc-title">
+        <h3 id="calc-title" style="font-size:1.15rem">비례배분 실험실</h3>
+        <div class="row">
+          <span>상체 : 다리 =</span>
+          <span class="mini"><button id="a-minus" aria-label="상체 비 줄이기">−</button><span id="a-val" class="num">4</span><button id="a-plus" aria-label="상체 비 늘리기">+</button></span>
+          <span>:</span>
+          <span class="mini"><button id="b-minus" aria-label="다리 비 줄이기">−</button><span id="b-val" class="num">5</span><button id="b-plus" aria-label="다리 비 늘리기">+</button></span>
+        </div>
+        <div id="calc-out" class="formula"></div>
+        <div class="row"><button class="btn" id="apply">인물에 적용하기</button><span class="msg" id="calc-msg" aria-live="polite"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PAGE 2 -->
+  <section id="page-2" role="tabpanel" aria-labelledby="tab-2" class="station" hidden>
+    <div class="panel shelf">
+      <h2>재료 선반</h2>
+      <p class="hint">+ − 버튼으로 재료를 더하거나 빼 보세요. 숫자는 탄수화물·단백질·지방(g)이에요.</p>
+      <div id="shelf" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <div class="panel burger-col">
+      <h2>내 버거</h2>
+      <div class="plate"><div class="stack" id="stack"></div></div>
+      <button class="btn ghost" id="reset">처음부터 다시 만들기</button>
+    </div>
+    <div class="panel analyzer">
+      <div>
+        <h2>건강한 버거 조건</h2>
+        <p class="hint">두 양씩 짝지어 비교해요. 두 조건을 모두 맞춰 보세요.</p>
+      </div>
+      <div class="tiles">
+        <div class="tile" style="--c:var(--carb-fill)"><small>탄수화물</small><div class="num" id="t-c">0g</div></div>
+        <div class="tile" style="--c:var(--upper)"><small>단백질</small><div class="num" id="t-p">0g</div></div>
+        <div class="tile" style="--c:var(--legs)"><small>지방</small><div class="num" id="t-f">0g</div></div>
+      </div>
+      <div class="cond" id="cond1">
+        <div class="cond-head"><b>조건 ① 탄수화물 : (단백질+지방) = 1 : 1</b><span class="pill" id="p1"></span></div>
+        <div class="num" id="r1"></div>
+        <div class="barrow"><span>내 버거</span><div class="bar" id="b1"></div></div>
+        <div class="barrow"><span>목표</span><div class="bar"><div style="flex:1;background:var(--carb-fill)">1</div><div style="flex:1;background:#7A5A8C">1</div></div></div>
+      </div>
+      <div class="cond" id="cond2">
+        <div class="cond-head"><b>조건 ② 단백질 : 지방 = 3 : 2</b><span class="pill" id="p2"></span></div>
+        <div class="num" id="r2"></div>
+        <div class="barrow"><span>내 버거</span><div class="bar" id="b2"></div></div>
+        <div class="barrow"><span>목표</span><div class="bar"><div style="flex:3;background:var(--upper)">3</div><div style="flex:2;background:var(--legs)">2</div></div></div>
+      </div>
+      <details class="goal" id="goal">
+        <summary>내 버거의 목표 양 보기 (비례배분)</summary>
+        <div id="goal-out" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
+      </details>
+      <button class="btn" id="to3">이 버거를 먹고 자란 나의 모습 보기 →</button>
+    </div>
+  </section>
+
+  <!-- PAGE 3 -->
+  <section id="page-3" role="tabpanel" aria-labelledby="tab-3" class="station" hidden>
+    <div class="panel" style="flex:1.2 1 420px;display:flex;flex-direction:column;gap:14px">
+      <h2>이 버거를 꼬박꼬박 먹고 자란다면?</h2>
+      <div class="compare">
+        <figure><svg class="fig" id="fig-before" viewBox="0 0 300 380" role="img" aria-label="1단계에서 만든 인물"></svg>
+          <figcaption>1단계의 인물<small id="cap-before" class="num"></small></figcaption></figure>
+        <span class="arrow" aria-hidden="true">→</span>
+        <figure><svg class="fig" id="fig-after" viewBox="0 0 300 380" role="img" aria-label="버거를 먹고 자란 인물"></svg>
+          <figcaption>버거를 먹고 자란 나<small id="cap-after" class="num"></small></figcaption></figure>
+      </div>
+    </div>
+    <div class="col-ctl" style="flex:1 1 340px">
+      <div class="panel" style="display:flex;flex-direction:column;gap:14px">
+        <h2>어떻게 정해졌을까?</h2>
+        <ol class="steps">
+          <li><b>1</b><div id="s1"></div></li>
+          <li><b>2</b><div id="s2"></div></li>
+          <li><b>3</b><div id="s3" class="formula"></div></li>
+        </ol>
+        <div class="chips"><button class="btn ghost" id="back2">← 버거 다시 만들기</button><button class="btn ghost" id="back1">← 신체 비율로</button></div>
+        <p class="note">실제 몸은 먹는 양, 운동, 잠, 유전 등 여러 가지에 따라 달라져요. 이 화면은 골고루 먹는 습관이 왜 중요한지 단순하게 나타낸 상상 그림이에요.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  var TOTAL = 18;
+  var S = { head:4, body:5, legs:9, a:4, b:5, counts:null, tab:1 };
+
+  var BUN = {name:'빵 2장', c:28, p:4, f:3};
+  var ING = [
+    {id:'beef', name:'소고기 패티', c:0, p:14, f:12, max:2, cls:'l-beef'},
+    {id:'chicken', name:'닭가슴살 패티', c:0, p:13, f:3, max:2, cls:'l-chicken'},
+    {id:'hash', name:'해시브라운', c:15, p:2, f:9, max:2, cls:'l-hash'},
+    {id:'cheese', name:'치즈', c:1, p:6, f:8, max:3, cls:'l-cheese'},
+    {id:'bacon', name:'베이컨', c:0, p:5, f:9, max:3, cls:'l-bacon'},
+    {id:'onion', name:'어니언링', c:4, p:1, f:2, max:3, cls:'l-onion'},
+    {id:'lettuce', name:'양상추', c:1, p:0, f:0, max:3, cls:'l-lettuce'},
+    {id:'tomato', name:'토마토', c:2, p:0, f:0, max:3, cls:'l-tomato'},
+    {id:'pickle', name:'피클', c:1, p:0, f:0, max:3, cls:'l-pickle'},
+    {id:'mayo', name:'마요네즈', c:1, p:0, f:11, max:3, cls:'l-mayo'},
+    {id:'ketchup', name:'케찹', c:6, p:0, f:0, max:3, cls:'l-ketchup'}
+  ];
+  var STACK = ['ketchup','mayo','onion','lettuce','tomato','pickle','cheese','bacon','chicken','beef','hash'];
+  var DEFAULT = {beef:1, chicken:0, hash:1, cheese:1, bacon:0, onion:0, lettuce:1, tomato:1, pickle:0, mayo:1, ketchup:0};
+  S.counts = Object.assign({}, DEFAULT);
+
+  function $(id){ return document.getElementById(id); }
+  function gcd(a,b){ return b ? gcd(b, a % b) : a; }
+  function simple(a,b){ var g = gcd(a,b) || 1; return [a/g, b/g, g]; }
+  function frac(n,d){ return '<span class="frac"><span>'+n+'</span><span>'+d+'</span></span>'; }
+
+  /* ---------- figure ---------- */
+  var CELL = 18, GX = 52, GY = 14, COLS = 10;
+  function figureSVG(head, body, legs, mood, withHandles, tw){
+    tw = tw || 5.4;
+    var yT = GY + (TOTAL - head - body - legs)*CELL;
+    var W = COLS*CELL, H = TOTAL*CELL, s = '<defs>'+
+      '<linearGradient id="shirtG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF8A78"/><stop offset="1" stop-color="var(--upper)"/></linearGradient>'+
+      '<linearGradient id="pantsG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5D8BE4"/><stop offset="1" stop-color="var(--legs)"/></linearGradient>'+
+      '<linearGradient id="skinG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE0BE"/><stop offset="1" stop-color="var(--skin)"/></linearGradient>'+
+      '<filter id="softShadow" x="-30%" y="-20%" width="160%" height="160%"><feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#51392b" flood-opacity=".18"/></filter>'+
+      '</defs>';
+    var yH = yT + head*CELL, yB = yH + body*CELL, yE = GY + H;
+    // grid
+    for (var r=0; r<=TOTAL; r++){
+      s += '<line x1="'+GX+'" y1="'+(GY+r*CELL)+'" x2="'+(GX+W)+'" y2="'+(GY+r*CELL)+'" stroke="var(--grid)" stroke-width="1"/>';
+      if (r % 3 === 0) s += '<text x="'+(GX-8)+'" y="'+(GY+r*CELL+4)+'" font-size="10" text-anchor="end" fill="var(--ink-soft)">'+r+'</text>';
+    }
+    for (var c=0; c<=COLS; c++) s += '<line x1="'+(GX+c*CELL)+'" y1="'+GY+'" x2="'+(GX+c*CELL)+'" y2="'+(GY+H)+'" stroke="var(--grid)" stroke-width="1"/>';
+    var cx = GX + W/2;
+    // soft ground shadow
+    s += '<ellipse cx="'+cx+'" cy="'+(yE+2)+'" rx="48" ry="6" fill="rgba(60,40,28,.12)"/>';
+    // legs
+    var lw = CELL*1.7;
+    s += '<g filter="url(#softShadow)"><rect x="'+(cx-lw-3)+'" y="'+(yB-2)+'" width="'+lw+'" height="'+(yE-yB-4)+'" rx="8" fill="url(#pantsG)" stroke="#315EAC" stroke-width="1.5"/>';
+    s += '<rect x="'+(cx+3)+'" y="'+(yB-2)+'" width="'+lw+'" height="'+(yE-yB-4)+'" rx="8" fill="url(#pantsG)" stroke="#315EAC" stroke-width="1.5"/></g>';
+    s += '<rect x="'+(cx-lw-8)+'" y="'+(yE-11)+'" width="'+(lw+8)+'" height="11" rx="6" fill="#34455B"/><path d="M'+(cx-lw-4)+' '+(yE-5)+'h'+(lw)+'" stroke="#fff" stroke-opacity=".45" stroke-width="1.5"/>';
+    s += '<rect x="'+(cx+3)+'" y="'+(yE-11)+'" width="'+(lw+8)+'" height="11" rx="6" fill="#34455B"/><path d="M'+(cx+7)+' '+(yE-5)+'h'+(lw)+'" stroke="#fff" stroke-opacity=".45" stroke-width="1.5"/>';
+    // arms and softly rounded T-shirt silhouette
+    var armH = Math.max(CELL*1.5, body*CELL*0.8);
+    var half = CELL*tw/2;
+    s += '<rect x="'+(cx-half-CELL*0.82)+'" y="'+(yH+9)+'" width="'+(CELL*0.82)+'" height="'+(armH-4)+'" rx="8" fill="url(#skinG)" stroke="#D99D70" stroke-width="1.2"/>';
+    s += '<rect x="'+(cx+half)+'" y="'+(yH+9)+'" width="'+(CELL*0.82)+'" height="'+(armH-4)+'" rx="8" fill="url(#skinG)" stroke="#D99D70" stroke-width="1.2"/>';
+    // torso
+    s += '<path d="M'+(cx-half+13)+' '+(yH+2)+' Q'+(cx-half)+' '+(yH+5)+' '+(cx-half)+' '+(yH+20)+' L'+(cx-half)+' '+(yB-14)+' Q'+(cx-half)+' '+(yB-2)+' '+(cx-half+14)+' '+yB+' L'+(cx+half-14)+' '+yB+' Q'+(cx+half)+' '+(yB-2)+' '+(cx+half)+' '+(yB-14)+' L'+(cx+half)+' '+(yH+20)+' Q'+(cx+half)+' '+(yH+5)+' '+(cx+half-13)+' '+(yH+2)+'Z" fill="url(#shirtG)" stroke="#C84E40" stroke-width="1.6" filter="url(#softShadow)"/>';
+    s += '<path d="M'+(cx-11)+' '+(yH+3)+' Q'+cx+' '+(yH+15)+' '+(cx+11)+' '+(yH+3)+'" fill="none" stroke="#FFF7F0" stroke-width="3" stroke-linecap="round"/>';
+    s += '<circle cx="'+cx+'" cy="'+(yH+body*CELL*.56)+'" r="3.5" fill="#FFE0B8" opacity=".85"/>';
+    // head: a new friendly character with ears and a natural side-swept haircut
+    var hw = Math.max(CELL*3.45, Math.min(CELL*4.05, head*CELL*1.16)), hh = head*CELL-4;
+    var hx=cx-hw/2, hy=yT+2;
+    s += '<circle cx="'+(hx+2)+'" cy="'+(hy+hh*.58)+'" r="'+Math.max(4,hh*.095)+'" fill="url(#skinG)" stroke="#D99D70" stroke-width="1.1"/>';
+    s += '<circle cx="'+(hx+hw-2)+'" cy="'+(hy+hh*.58)+'" r="'+Math.max(4,hh*.095)+'" fill="url(#skinG)" stroke="#D99D70" stroke-width="1.1"/>';
+    s += '<rect x="'+hx+'" y="'+hy+'" width="'+hw+'" height="'+hh+'" rx="'+Math.min(hw*.42,hh*.45)+'" fill="url(#skinG)" stroke="#D99D70" stroke-width="1.45" filter="url(#softShadow)"/>';
+    s += '<path d="M'+(hx+2)+' '+(hy+hh*.45)+' C'+(hx-1)+' '+(hy+hh*.16)+' '+(hx+hw*.18)+' '+(hy-3)+' '+(hx+hw*.48)+' '+(hy-3)+' C'+(hx+hw*.78)+' '+(hy-3)+' '+(hx+hw+1)+' '+(hy+hh*.14)+' '+(hx+hw-2)+' '+(hy+hh*.43)+' C'+(hx+hw*.88)+' '+(hy+hh*.34)+' '+(hx+hw*.78)+' '+(hy+hh*.29)+' '+(hx+hw*.65)+' '+(hy+hh*.28)+' C'+(hx+hw*.56)+' '+(hy+hh*.16)+' '+(hx+hw*.41)+' '+(hy+hh*.14)+' '+(hx+hw*.31)+' '+(hy+hh*.28)+' C'+(hx+hw*.2)+' '+(hy+hh*.28)+' '+(hx+hw*.1)+' '+(hy+hh*.34)+' '+(hx+2)+' '+(hy+hh*.45)+'Z" fill="var(--hair)"/>';
+    s += '<path d="M'+(hx+hw*.62)+' '+(hy+hh*.08)+' Q'+(hx+hw*.5)+' '+(hy+hh*.18)+' '+(hx+hw*.45)+' '+(hy+hh*.31)+'" fill="none" stroke="#6F4936" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>';
+    var ey = yT + 2 + hh*0.55, er = Math.max(1.8, Math.min(3, hh/14));
+    s += '<circle cx="'+(cx-hw*0.2)+'" cy="'+ey+'" r="'+er+'" fill="var(--hair)"/><circle cx="'+(cx+hw*0.2)+'" cy="'+ey+'" r="'+er+'" fill="var(--hair)"/>';
+    s += '<circle cx="'+(cx-hw*.31)+'" cy="'+(ey+6)+'" r="3.5" fill="#F28D86" opacity=".5"/><circle cx="'+(cx+hw*.31)+'" cy="'+(ey+6)+'" r="3.5" fill="#F28D86" opacity=".5"/>';
+    var my = yT + 2 + hh*0.76, mw = hw*0.16;
+    var curve = mood === 'happy' ? hh*0.12 : mood === 'tired' ? -hh*0.06 : hh*0.04;
+    s += '<path d="M'+(cx-mw)+' '+my+' Q'+cx+' '+(my+curve)+' '+(cx+mw)+' '+my+'" stroke="#9C4A46" stroke-width="2.4" fill="none" stroke-linecap="round"/>';
+    // brackets
+    var bx = GX + W + 10;
+    s += '<path d="M'+bx+' '+(yT+1)+' h6 V'+(yB-1)+' h-6" stroke="var(--upper)" stroke-width="3" fill="none"/>';
+    s += '<text x="'+(bx+12)+'" y="'+((yT+yB)/2-2)+'" font-size="13" fill="var(--upper)" font-weight="600">상체</text>';
+    s += '<text x="'+(bx+12)+'" y="'+((yT+yB)/2+14)+'" font-size="13" fill="var(--upper)">'+(head+body)+'칸</text>';
+    s += '<path d="M'+bx+' '+(yB+1)+' h6 V'+(yE-1)+' h-6" stroke="var(--legs)" stroke-width="3" fill="none"/>';
+    s += '<text x="'+(bx+12)+'" y="'+((yB+yE)/2-2)+'" font-size="13" fill="var(--legs)" font-weight="600">다리</text>';
+    s += '<text x="'+(bx+12)+'" y="'+((yB+yE)/2+14)+'" font-size="13" fill="var(--legs)">'+legs+'칸</text>';
+    if (withHandles){
+      [['hb',yH],['bl',yB]].forEach(function(h){
+        s += '<line x1="'+GX+'" y1="'+h[1]+'" x2="'+(GX+W)+'" y2="'+h[1]+'" stroke="var(--ink)" stroke-width="2" stroke-dasharray="5 4"/>';
+        s += '<circle class="hdl" data-h="'+h[0]+'" cx="'+(GX+W)+'" cy="'+h[1]+'" r="10" fill="var(--surface)" stroke="var(--ink)" stroke-width="2.5" style="cursor:ns-resize"/>';
+      });
+    }
+    return s;
+  }
+
+  /* ---------- page 1 ---------- */
+  function setParts(head, legs){
+    head = Math.max(1, Math.min(8, head));
+    legs = Math.max(2, Math.min(15, legs));
+    if (TOTAL - head - legs < 2) return false;
+    S.head = head; S.legs = legs; S.body = TOTAL - head - legs;
+    return true;
+  }
+  function renderP1(){
+    $('fig1').innerHTML = figureSVG(S.head, S.body, S.legs, 'neutral', true);
+    $('c-head').textContent = S.head; $('c-body').textContent = S.body; $('c-legs').textContent = S.legs;
+    var up = S.head + S.body, sm = simple(up, S.legs);
+    $('r-up').textContent = up; $('r-lg').textContent = S.legs;
+    $('r-simple').textContent = sm[2] > 1 ? '→ 간단히 하면 ' + sm[0] + ' : ' + sm[1] : '→ 더 간단히 할 수 없어요';
+    $('head-minus').disabled = S.head <= 1; $('head-plus').disabled = S.head >= 8 || S.body <= 2;
+    $('legs-minus').disabled = S.legs <= 2; $('legs-plus').disabled = S.body <= 2;
+    renderCalc();
+  }
+  function headFor(upper){ return upper >= 9 ? 3 : upper >= 5 ? 2 : 1; }
+  function renderCalc(){
+    var a = S.a, b = S.b, sum = a + b;
+    $('a-val').textContent = a; $('b-val').textContent = b;
+    var html = '비의 합 ' + a + ' + ' + b + ' = <b>' + sum + '</b><br>';
+    var ok = TOTAL % sum === 0, msg = '';
+    if (ok){
+      var up = TOTAL*a/sum, lg = TOTAL*b/sum;
+      html += '<span style="color:var(--upper);font-weight:600">상체</span> 18 × ' + frac(a, sum) + ' = <b>' + up + '칸</b>　'
+            + '<span style="color:var(--legs);font-weight:600">다리</span> 18 × ' + frac(b, sum) + ' = <b>' + lg + '칸</b>';
+      if (up < 3 || lg < 2){ ok = false; msg = '이 비로는 인물을 그리기 어려워요. 다른 비를 골라 보세요.'; }
+    } else {
+      html += '18칸을 ' + sum + '묶음으로 똑같이 나눌 수 없어요.';
+      msg = '비의 합이 2, 3, 6, 9, 18 중 하나가 되도록 바꿔 보세요.';
+    }
+    $('calc-out').innerHTML = html; $('calc-msg').textContent = msg; $('apply').disabled = !ok;
+    ['a-minus','b-minus'].forEach(function(id){ $(id).disabled = (id[0]==='a'?a:b) <= 1; });
+    ['a-plus','b-plus'].forEach(function(id){ $(id).disabled = (id[0]==='a'?a:b) >= 9; });
+  }
+
+  $('head-minus').onclick = function(){ setParts(S.head-1, S.legs); save(); renderP1(); };
+  $('head-plus').onclick = function(){ setParts(S.head+1, S.legs); save(); renderP1(); };
+  $('legs-minus').onclick = function(){ setParts(S.head, S.legs-1); save(); renderP1(); };
+  $('legs-plus').onclick = function(){ setParts(S.head, S.legs+1); save(); renderP1(); };
+  Array.prototype.forEach.call(document.querySelectorAll('[data-preset]'), function(btn){
+    btn.onclick = function(){ var v = btn.getAttribute('data-preset').split(',').map(Number); setParts(v[0], v[2]); save(); renderP1(); };
+  });
+  $('a-minus').onclick = function(){ S.a = Math.max(1, S.a-1); renderCalc(); };
+  $('a-plus').onclick = function(){ S.a = Math.min(9, S.a+1); renderCalc(); };
+  $('b-minus').onclick = function(){ S.b = Math.max(1, S.b-1); renderCalc(); };
+  $('b-plus').onclick = function(){ S.b = Math.min(9, S.b+1); renderCalc(); };
+  $('apply').onclick = function(){
+    var sum = S.a + S.b, up = TOTAL*S.a/sum, lg = TOTAL*S.b/sum;
+    setParts(headFor(up), lg); save(); renderP1();
+  };
+
+  // drag handles
+  var drag = null, svg1 = $('fig1');
+  function rowAt(evt){
+    var pt = svg1.createSVGPoint(); pt.x = evt.clientX; pt.y = evt.clientY;
+    var p = pt.matrixTransform(svg1.getScreenCTM().inverse());
+    return Math.round((p.y - GY) / CELL);
+  }
+  svg1.addEventListener('pointerdown', function(e){
+    var t = e.target; if (!t.classList || !t.classList.contains('hdl')) return;
+    drag = t.getAttribute('data-h'); svg1.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  svg1.addEventListener('pointermove', function(e){
+    if (!drag) return;
+    var r = rowAt(e);
+    if (drag === 'hb'){ if (setParts(r, S.legs)) renderP1(); }
+    else { if (setParts(S.head, TOTAL - r)) renderP1(); }
+  });
+  function endDrag(){ if (drag){ drag = null; save(); } }
+  svg1.addEventListener('pointerup', endDrag); svg1.addEventListener('pointercancel', endDrag);
+
+  /* ---------- page 2 ---------- */
+  function totals(){
+    var t = {c:BUN.c, p:BUN.p, f:BUN.f};
+    ING.forEach(function(i){ var n = S.counts[i.id]||0; t.c += i.c*n; t.p += i.p*n; t.f += i.f*n; });
+    return t;
+  }
+  function evaluate(t){
+    var pf = t.p + t.f, c1 = t.c/(t.c+pf), c2 = pf ? t.p/pf : 0;
+    return { pf:pf, share1:c1, share2:c2, ok1: c1 >= 0.45 && c1 <= 0.55, ok2: c2 >= 0.55 && c2 <= 0.65 };
+  }
+  function renderShelf(){
+    var h = '<div class="ing fixed"><div class="nm"><b>'+BUN.name+'</b><small>탄 '+BUN.c+' · 단 '+BUN.p+' · 지 '+BUN.f+'</small></div><span class="tag">항상 포함</span></div>';
+    ING.forEach(function(i){
+      var n = S.counts[i.id]||0;
+      h += '<div class="ing"><div class="nm"><b>'+i.name+'</b><small>탄 '+i.c+' · 단 '+i.p+' · 지 '+i.f+'</small></div>'
+        + '<span class="mini"><button data-id="'+i.id+'" data-d="-1" aria-label="'+i.name+' 빼기"'+(n<=0?' disabled':'')+'>−</button>'
+        + '<span class="num">'+n+'</span><button data-id="'+i.id+'" data-d="1" aria-label="'+i.name+' 더하기"'+(n>=i.max?' disabled':'')+'>+</button></span></div>';
+    });
+    $('shelf').innerHTML = h;
+  }
+  function renderStack(){
+    var h = '<div class="l-bun-top"></div>';
+    STACK.forEach(function(id){ var i = ING.filter(function(x){return x.id===id;})[0]; for (var k=0;k<(S.counts[id]||0);k++) h += '<div class="'+i.cls+'"></div>'; });
+    h += '<div class="l-bun-bot"></div>';
+    $('stack').innerHTML = h;
+  }
+  function seg(v, color, label){ return '<div style="flex:'+Math.max(v,0.001)+';background:'+color+'">'+label+'</div>'; }
+  function renderAnalyzer(){
+    var t = totals(), e = evaluate(t);
+    $('t-c').textContent = t.c+'g'; $('t-p').textContent = t.p+'g'; $('t-f').textContent = t.f+'g';
+    var s1 = simple(t.c, e.pf), s2 = simple(t.p, t.f);
+    $('r1').innerHTML = '내 버거: 탄수화물 ' + t.c + 'g : 단백질+지방 ' + e.pf + 'g = <b>' + t.c + ' : ' + e.pf + '</b>' + (s1[2]>1 ? ' → ' + s1[0] + ' : ' + s1[1] : '');
+    $('r2').innerHTML = '내 버거: 단백질 ' + t.p + 'g : 지방 ' + t.f + 'g = <b>' + t.p + ' : ' + t.f + '</b>' + (s2[2]>1 ? ' → ' + s2[0] + ' : ' + s2[1] : '');
+    $('b1').innerHTML = seg(t.c,'var(--carb-fill)',t.c+'g') + seg(e.pf,'#7A5A8C',e.pf+'g');
+    $('b2').innerHTML = seg(t.p,'var(--upper)',t.p+'g') + seg(t.f,'var(--legs)',t.f+'g');
+    [['p1','cond1',e.ok1],['p2','cond2',e.ok2]].forEach(function(x){
+      $(x[0]).textContent = x[2] ? '조건 만족' : '아직이에요'; $(x[0]).className = 'pill ' + (x[2] ? 'ok' : 'no');
+      $(x[1]).classList.toggle('ok', x[2]);
+    });
+    var T = t.c + e.pf, half = T/2;
+    function r1(n){ return Math.round(n*10)/10; }
+    $('goal-out').innerHTML =
+      '<div>세 영양소의 합: <b class="num">' + T + 'g</b></div>' +
+      '<div>탄수화물 ' + T + ' × ' + frac(1,2) + ' = <b class="num">' + r1(half) + 'g</b>　단백질+지방 ' + T + ' × ' + frac(1,2) + ' = <b class="num">' + r1(half) + 'g</b></div>' +
+      '<div>단백질 ' + r1(half) + ' × ' + frac(3,5) + ' = <b class="num">' + r1(half*3/5) + 'g</b>　지방 ' + r1(half) + ' × ' + frac(2,5) + ' = <b class="num">' + r1(half*2/5) + 'g</b></div>';
+  }
+  function renderP2(){ renderShelf(); renderStack(); renderAnalyzer(); }
+  $('shelf').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-id]'); if (!b) return;
+    var id = b.getAttribute('data-id'), i = ING.filter(function(x){return x.id===id;})[0];
+    S.counts[id] = Math.max(0, Math.min(i.max, (S.counts[id]||0) + Number(b.getAttribute('data-d'))));
+    save(); renderP2();
+  });
+  $('reset').onclick = function(){ S.counts = {}; ING.forEach(function(i){ S.counts[i.id] = 0; }); save(); renderP2(); };
+
+  /* ---------- page 3 ---------- */
+  function renderP3(){
+    var t = totals(), T = t.c + t.p + t.f, e = evaluate(t), met = (e.ok1?1:0) + (e.ok2?1:0);
+    var ps = t.p / T, a, b, mood, tw, line;
+    if (met === 2){ a = 4; b = 5; mood = 'happy'; line = '탄수화물·단백질·지방이 골고루 들어간 버거예요. 이렇게 골고루 먹는 습관이 이어지면 탄탄하고 건강해 보이는 모습이 돼요.'; }
+    else if (met === 1){ a = 1; b = 1; mood = 'neutral'; line = '영양소가 조금 치우친 버거예요. 이런 버거를 자주 먹으면 균형이 조금 아쉬운 모습이 돼요.'; }
+    else { a = 5; b = 4; mood = 'tired'; line = '영양소가 많이 치우친 버거예요. 이런 버거를 자주 먹으면 균형이 무너진 모습이 돼요.'; }
+    var kcal = t.c*4 + t.p*4 + t.f*9, bodyLine;
+    var veg = (S.counts.lettuce||0) + (S.counts.tomato||0) + (S.counts.pickle||0);
+    if (kcal < 350){ tw = 4.2; bodyLine = ' 열량이 적은 편이라 몸이 말랐어요.'; }
+    else if (kcal <= 500){ tw = 5.4; bodyLine = ''; }
+    else if (kcal <= 700){ tw = 6.4; bodyLine = ' 열량이 높은 편이라 몸통이 조금 넓어졌어요.'; }
+    else { tw = 7.4; bodyLine = ' 열량이 아주 높아서 몸통이 넓어졌어요.'; }
+    var kcalLine = '<br><br><b>이 버거의 열량</b> 약 <span class="num">' + kcal + 'kcal</span><br><small style="color:var(--ink-soft)">탄수화물·단백질 1g = 4kcal, 지방 1g = 9kcal. 키는 열량(300kcal 이상)과 단백질(15g 이상)이 모두 충분해야 크게, 몸통은 열량이 적으면 마르게, 많으면 넓게 표현돼요.'
+      + (veg ? ' 양상추·토마토·피클 같은 채소는 탄수화물이 조금 있지만 열량이 아주 낮아요.' : '') + '</small>';
+    var ht = 18, htLine = '';
+    if (kcal < 300 || t.p < 15){
+      ht = 12; htLine = kcal < 300 ? ' 열량이 적어서 키가 작게 자랐어요.' : ' 단백질이 부족해서 키가 작게 자랐어요.';
+      if (a === 4){ a = 5; b = 7; } else if (a === 5){ a = 7; b = 5; }
+    }
+    var sum = a + b, up = ht*a/sum, lg = ht*b/sum, hd = headFor(up);
+    $('fig-before').innerHTML = figureSVG(S.head, S.body, S.legs, 'neutral', false);
+    $('fig-after').innerHTML = figureSVG(hd, up - hd, lg, mood, false, tw);
+    $('cap-before').textContent = '상체 ' + (S.head+S.body) + '칸 : 다리 ' + S.legs + '칸';
+    $('cap-after').textContent = '키 ' + ht + '칸 · 상체 ' + up + '칸 : 다리 ' + lg + '칸';
+    function mark(ok){ return '<span class="pill ' + (ok?'ok':'no') + '">' + (ok?'맞음':'다름') + '</span>'; }
+    function rat(x, y){ var q = simple(x, y); return '<span class="num">' + x + ' : ' + y + (q[2] > 1 ? ' → ' + q[0] + ' : ' + q[1] : '') + '</span>'; }
+    $('s1').innerHTML = '<b>내 버거 살펴보기</b><br>조건 ① 탄수화물 : (단백질+지방) = ' + rat(t.c, t.p + t.f) + ' ' + mark(e.ok1)
+      + '<br>조건 ② 단백질 : 지방 = ' + rat(t.p, t.f) + ' ' + mark(e.ok2);
+    $('s2').innerHTML = line + htLine + bodyLine + '<br>이 모습의 상체 : 다리 = <b>' + a + ' : ' + b + '</b>' + kcalLine;
+    $('s3').innerHTML = '키 ' + ht + '칸을 ' + a + ' : ' + b + '로 비례배분하면<br><span style="color:var(--upper);font-weight:600">상체</span> ' + ht + ' × ' + frac(a,sum) + ' = <b>' + up + '칸</b><br><span style="color:var(--legs);font-weight:600">다리</span> ' + ht + ' × ' + frac(b,sum) + ' = <b>' + lg + '칸</b>';
+  }
+  $('to3').onclick = function(){ show(3); };
+  $('back2').onclick = function(){ show(2); };
+  $('back1').onclick = function(){ show(1); };
+
+  /* ---------- tabs & state ---------- */
+  function show(n){
+    S.tab = n;
+    [1,2,3].forEach(function(k){ $('page-'+k).hidden = k !== n; $('tab-'+k).setAttribute('aria-selected', k===n ? 'true' : 'false'); });
+    if (n === 1) renderP1(); else if (n === 2) renderP2(); else renderP3();
+    save();
+  }
+  [1,2,3].forEach(function(k){ $('tab-'+k).onclick = function(){ show(k); }; });
+  document.querySelector('.tabs').addEventListener('keydown', function(e){
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    var n = S.tab + (e.key === 'ArrowRight' ? 1 : -1); n = n < 1 ? 3 : n > 3 ? 1 : n;
+    show(n); $('tab-'+n).focus();
+  });
+
+  var KEY = 'ratio-burger-lab-v1';
+  function save(){
+    try { localStorage.setItem(KEY, JSON.stringify({head:S.head, legs:S.legs, counts:S.counts, tab:S.tab})); } catch(e){}
+    try { if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(function(){ return {head:S.head, legs:S.legs, counts:S.counts, tab:S.tab}; }); } catch(e){}
+  }
+  function start(data){
+    var d = data && data.counts ? data : null;
+    if (!d){ try { d = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch(e){ d = null; } }
+    if (d){
+      if (d.head && d.legs) setParts(d.head, d.legs);
+      if (d.counts) S.counts = Object.assign({}, DEFAULT, d.counts);
+    }
+    show(d && d.tab ? d.tab : 1);
+  }
+  var hot = window.claude && window.claude.hot;
+  if (hot && hot.ready) hot.ready(start); else start(hot && hot.data ? hot.data : null);
+})();
+</script>
+
+</body>
+</html>
