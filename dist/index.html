@@ -27,6 +27,7 @@
   --good:#7CC487; --good-bg:#1F3324; --warn:#F0A56B; --warn-bg:#3A2616; --skin:#E9BC93; --hair:#20160F; --grid:#3A2E25; color-scheme:dark }
 
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;
   padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:20px 48px}
 .wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
@@ -83,6 +84,10 @@ svg.fig{width:100%;max-width:300px;height:auto;touch-action:none;user-select:non
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--ink)}
 .msg{font-size:.92rem;color:var(--warn)}
+.lab-lock{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:14px}
+.answer-grid{display:grid;grid-template-columns:repeat(2,minmax(120px,1fr));gap:10px}
+.answer-grid label{display:flex;flex-direction:column;gap:5px;color:var(--ink-soft);font-size:.88rem}
+.answer-grid input{width:100%;min-height:44px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);font:600 1.05rem var(--body);padding:8px 12px}
 
 /* burger */
 .shelf{flex:1 1 280px;display:flex;flex-direction:column;gap:8px}
@@ -222,15 +227,26 @@ details.goal summary{cursor:pointer;font-weight:600}
         </div>
       </div>
       <div class="calc" aria-labelledby="calc-title">
-        <h3 id="calc-title" style="font-size:1.15rem">비례배분 실험실</h3>
-        <div class="row">
-          <span>상체 : 다리 =</span>
-          <span class="mini"><button id="a-minus" aria-label="상체 비 줄이기">−</button><span id="a-val" class="num">4</span><button id="a-plus" aria-label="상체 비 늘리기">+</button></span>
-          <span>:</span>
-          <span class="mini"><button id="b-minus" aria-label="다리 비 줄이기">−</button><span id="b-val" class="num">5</span><button id="b-plus" aria-label="다리 비 늘리기">+</button></span>
+        <h3 id="calc-title" style="font-size:1.15rem">나누기 실험실</h3>
+        <div class="lab-lock" id="lab-locked">
+          <span>비례배분을 배운 다음에 선생님과 함께 열어요.</span>
+          <button class="btn" id="open-lab">실험실 열기</button>
         </div>
-        <div id="calc-out" class="formula"></div>
-        <div class="row"><button class="btn" id="apply">인물에 적용하기</button><span class="msg" id="calc-msg" aria-live="polite"></span></div>
+        <div id="lab-body" hidden>
+          <div class="row">
+            <span>상체 : 다리 =</span>
+            <span class="mini"><button id="a-minus" aria-label="상체 비 줄이기">−</button><span id="a-val" class="num">4</span><button id="a-plus" aria-label="상체 비 늘리기">+</button></span>
+            <span>:</span>
+            <span class="mini"><button id="b-minus" aria-label="다리 비 줄이기">−</button><span id="b-val" class="num">5</span><button id="b-plus" aria-label="다리 비 늘리기">+</button></span>
+          </div>
+          <div class="answer-grid" style="margin-top:10px">
+            <label for="answer-upper">상체는 몇 칸일까요?<input id="answer-upper" type="number" min="0" max="18" inputmode="numeric" placeholder="칸 수 입력"></label>
+            <label for="answer-legs">다리는 몇 칸일까요?<input id="answer-legs" type="number" min="0" max="18" inputmode="numeric" placeholder="칸 수 입력"></label>
+          </div>
+          <div class="row" style="margin-top:10px"><button class="btn ghost" id="check-answer">확인하기</button><span class="msg" id="calc-msg" aria-live="polite"></span></div>
+          <div id="calc-out" class="formula" style="margin-top:8px"></div>
+          <div class="row" style="margin-top:10px"><button class="btn" id="apply" disabled>인물에 적용하기</button></div>
+        </div>
       </div>
     </div>
   </section>
@@ -307,7 +323,7 @@ details.goal summary{cursor:pointer;font-weight:600}
 <script>
 (function(){
   var TOTAL = 18;
-  var S = { head:4, body:5, legs:9, a:4, b:5, counts:null, tab:1 };
+  var S = { head:4, body:5, legs:9, a:4, b:5, counts:null, tab:1, labOpen:false, checked:false, hint:'' };
 
   var BUN = {name:'빵 2장', c:28, p:4, f:3};
   var ING = [
@@ -420,21 +436,28 @@ details.goal summary{cursor:pointer;font-weight:600}
   function headFor(upper){ return upper >= 9 ? 3 : upper >= 5 ? 2 : 1; }
   function renderCalc(){
     var a = S.a, b = S.b, sum = a + b;
+    $('lab-locked').hidden = !!S.labOpen; $('lab-body').hidden = !S.labOpen;
     $('a-val').textContent = a; $('b-val').textContent = b;
-    var html = '비의 합 ' + a + ' + ' + b + ' = <b>' + sum + '</b><br>';
-    var ok = TOTAL % sum === 0, msg = '';
-    if (ok){
-      var up = TOTAL*a/sum, lg = TOTAL*b/sum;
-      html += '<span style="color:var(--upper);font-weight:600">상체</span> 18 × ' + frac(a, sum) + ' = <b>' + up + '칸</b>　'
-            + '<span style="color:var(--legs);font-weight:600">다리</span> 18 × ' + frac(b, sum) + ' = <b>' + lg + '칸</b>';
-      if (up < 3 || lg < 2){ ok = false; msg = '이 비로는 인물을 그리기 어려워요. 다른 비를 골라 보세요.'; }
-    } else {
-      html += '18칸을 ' + sum + '묶음으로 똑같이 나눌 수 없어요.';
-      msg = '비의 합이 2, 3, 6, 9, 18 중 하나가 되도록 바꿔 보세요.';
+    var divisible = TOTAL % sum === 0, up = divisible ? TOTAL*a/sum : 0, lg = divisible ? TOTAL*b/sum : 0;
+    var drawable = divisible && up >= 3 && lg >= 2;
+    var html = '', msg = S.hint;
+    if (!divisible) msg = '이 비로는 18칸을 똑같이 나눌 수 없어요. 비를 바꿔 보세요.';
+    else if (S.checked){
+      html = '<b style="color:var(--good)">정답이에요!</b><br>비의 합 ' + a + ' + ' + b + ' = <b>' + sum + '</b><br>'
+        + '<span style="color:var(--upper);font-weight:600">상체</span> 18 × ' + frac(a, sum) + ' = <b>' + up + '칸</b>　'
+        + '<span style="color:var(--legs);font-weight:600">다리</span> 18 × ' + frac(b, sum) + ' = <b>' + lg + '칸</b>';
+      msg = drawable ? '' : '이 비로는 인물을 그리기 어려워요. 다른 비를 골라 보세요.';
     }
-    $('calc-out').innerHTML = html; $('calc-msg').textContent = msg; $('apply').disabled = !ok;
+    $('calc-out').innerHTML = html; $('calc-msg').textContent = msg;
+    $('check-answer').disabled = !divisible; $('apply').disabled = !(drawable && S.checked);
     ['a-minus','b-minus'].forEach(function(id){ $(id).disabled = (id[0]==='a'?a:b) <= 1; });
     ['a-plus','b-plus'].forEach(function(id){ $(id).disabled = (id[0]==='a'?a:b) >= 9; });
+  }
+
+  function ratioChanged(){
+    S.checked = false; S.hint = '';
+    $('answer-upper').value = ''; $('answer-legs').value = '';
+    renderCalc();
   }
 
   $('head-minus').onclick = function(){ setParts(S.head-1, S.legs); save(); renderP1(); };
@@ -444,10 +467,21 @@ details.goal summary{cursor:pointer;font-weight:600}
   Array.prototype.forEach.call(document.querySelectorAll('[data-preset]'), function(btn){
     btn.onclick = function(){ var v = btn.getAttribute('data-preset').split(',').map(Number); setParts(v[0], v[2]); save(); renderP1(); };
   });
-  $('a-minus').onclick = function(){ S.a = Math.max(1, S.a-1); renderCalc(); };
-  $('a-plus').onclick = function(){ S.a = Math.min(9, S.a+1); renderCalc(); };
-  $('b-minus').onclick = function(){ S.b = Math.max(1, S.b-1); renderCalc(); };
-  $('b-plus').onclick = function(){ S.b = Math.min(9, S.b+1); renderCalc(); };
+  $('open-lab').onclick = function(){ S.labOpen = true; save(); renderCalc(); };
+  $('a-minus').onclick = function(){ S.a = Math.max(1, S.a-1); ratioChanged(); };
+  $('a-plus').onclick = function(){ S.a = Math.min(9, S.a+1); ratioChanged(); };
+  $('b-minus').onclick = function(){ S.b = Math.max(1, S.b-1); ratioChanged(); };
+  $('b-plus').onclick = function(){ S.b = Math.min(9, S.b+1); ratioChanged(); };
+  $('check-answer').onclick = function(){
+    var au = $('answer-upper').value.trim(), al = $('answer-legs').value.trim();
+    var sum = S.a + S.b, divisible = TOTAL % sum === 0;
+    S.checked = false;
+    if (!au || !al) S.hint = '상체와 다리 칸 수를 모두 입력해 주세요.';
+    else if (Number(au) + Number(al) !== TOTAL) S.hint = '두 수를 더하면 18칸이 되어야 해요.';
+    else if (!divisible || Number(au) !== TOTAL*S.a/sum || Number(al) !== TOTAL*S.b/sum) S.hint = '다시 생각해 보세요. 18칸을 몇 묶음으로 똑같이 나누면 좋을까요?';
+    else { S.checked = true; S.hint = ''; }
+    renderCalc();
+  };
   $('apply').onclick = function(){
     var sum = S.a + S.b, up = TOTAL*S.a/sum, lg = TOTAL*S.b/sum;
     setParts(headFor(up), lg); save(); renderP1();
@@ -532,9 +566,9 @@ details.goal summary{cursor:pointer;font-weight:600}
   function renderP3(){
     var t = totals(), T = t.c + t.p + t.f, e = evaluate(t), met = (e.ok1?1:0) + (e.ok2?1:0);
     var ps = t.p / T, a, b, mood, tw, line;
-    if (met === 2){ a = 4; b = 5; mood = 'happy'; line = '탄수화물·단백질·지방이 골고루 들어간 버거예요. 이렇게 골고루 먹는 습관이 이어지면 탄탄하고 건강해 보이는 모습이 돼요.'; }
-    else if (met === 1){ a = 1; b = 1; mood = 'neutral'; line = '영양소가 조금 치우친 버거예요. 이런 버거를 자주 먹으면 균형이 조금 아쉬운 모습이 돼요.'; }
-    else { a = 5; b = 4; mood = 'tired'; line = '영양소가 많이 치우친 버거예요. 이런 버거를 자주 먹으면 균형이 무너진 모습이 돼요.'; }
+    if (met === 2){ a = 4; b = 5; mood = 'happy'; line = '두 영양 조건에 모두 가까운 버거예요. 이런 버거를 자주 먹는다고 가정하면 상체와 다리가 4 : 5인 모습으로 표현돼요.'; }
+    else if (met === 1){ a = 1; b = 1; mood = 'neutral'; line = '한 가지 영양 조건에 가까운 버거예요. 이런 버거를 자주 먹는다고 가정하면 상체와 다리가 같은 비인 모습으로 표현돼요.'; }
+    else { a = 5; b = 4; mood = 'tired'; line = '두 영양 조건과 모두 다른 버거예요. 이런 버거를 자주 먹는다고 가정하면 상체와 다리의 비가 달라진 모습으로 표현돼요.'; }
     var kcal = t.c*4 + t.p*4 + t.f*9, bodyLine;
     var veg = (S.counts.lettuce||0) + (S.counts.tomato||0) + (S.counts.pickle||0);
     if (kcal < 350){ tw = 4.2; bodyLine = ' 열량이 적은 편이라 몸이 말랐어요.'; }
@@ -580,8 +614,8 @@ details.goal summary{cursor:pointer;font-weight:600}
 
   var KEY = 'ratio-burger-lab-v1';
   function save(){
-    try { localStorage.setItem(KEY, JSON.stringify({head:S.head, legs:S.legs, counts:S.counts, tab:S.tab})); } catch(e){}
-    try { if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(function(){ return {head:S.head, legs:S.legs, counts:S.counts, tab:S.tab}; }); } catch(e){}
+    try { localStorage.setItem(KEY, JSON.stringify({head:S.head, legs:S.legs, counts:S.counts, tab:S.tab, labOpen:S.labOpen})); } catch(e){}
+    try { if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(function(){ return {head:S.head, legs:S.legs, counts:S.counts, tab:S.tab, labOpen:S.labOpen}; }); } catch(e){}
   }
   function start(data){
     var d = data && data.counts ? data : null;
@@ -589,6 +623,7 @@ details.goal summary{cursor:pointer;font-weight:600}
     if (d){
       if (d.head && d.legs) setParts(d.head, d.legs);
       if (d.counts) S.counts = Object.assign({}, DEFAULT, d.counts);
+      S.labOpen = !!d.labOpen;
     }
     show(d && d.tab ? d.tab : 1);
   }
